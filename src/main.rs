@@ -19,4 +19,8 @@ fn main() {
     } else {
         println!("unknown command: {}", args[1])
     }
+    //to see if it initialized a repo
+    //1. cargo run init(Initialize a repo in github)
+    //then ls -la to list the content from de directory
+    //ls -ls .git to see the hidden git files
 }
