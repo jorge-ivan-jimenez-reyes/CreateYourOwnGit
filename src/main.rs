@@ -4,11 +4,13 @@ use std::env;
 use std::fs;
 
 fn main() {
-    // You can use print statements as follows for debugging, they'll be visible when running tests.
     eprintln!("Logs from your program will appear here!");
 
     let args: Vec<String> = env::args().collect();
+    //making a cli app
     if args[1] == "init" {
+        //creating a directory
+
         fs::create_dir(".git").unwrap();
         fs::create_dir(".git/objects").unwrap();
         fs::create_dir(".git/refs").unwrap();
