@@ -25,3 +25,4 @@ fn main() {
     //ls -ls .git to see the hidden git files
     //IMPORTANT do not initialized inside a git repo this will break the application
 }
+
