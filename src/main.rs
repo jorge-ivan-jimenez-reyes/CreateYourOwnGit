@@ -16,8 +16,9 @@ fn main() {
         fs::create_dir(".git/refs").unwrap();
         fs::write(".git/HEAD", "ref: refs/heads/main\n").unwrap();
         println!("Initialized git directory")
-
-    } else if args[1] == "cat-file" {
+    //we need cat-file
+    //also -p
+    } else if args[2] == "cat-file" {
         println!("unknown command: {}", args[1])
     }
     //to see if it initialized a repo
