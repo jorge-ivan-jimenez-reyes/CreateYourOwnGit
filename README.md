@@ -1,9 +1,10 @@
 # CreateYourOwnGit
-Create your own git by code-crafters Project for SO
+Read a Blob object
 
 ## Características
 
-- Inicializa un repositorio Git básico.
+-  `$ git cat-file -p d670460b4b4aece5915caf5c68d12f560a9fe3e4`
+- 
 - Crea la carpeta `.git` y las subcarpetas `objects` y `refs`.
 - Configura el archivo `.git/HEAD` para apuntar a la rama principal (`main`).
 - Es una aplicación de línea de comandos simple y extensible.
