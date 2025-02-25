@@ -20,10 +20,13 @@ fn main() {
     //also -p
     } else if args[1] == "cat-file" {
         if args[2] == "-p" {
-            let hash: String = fs::read_to_string(".git/hash").unwrap();
-        }
+            let hash: String=args[3];
 
-        println!("unknown command: {}", args[1])
+        }
+        else {
+
+            println!("unknown command: {}", args[1])
+        }
     }
     //to see if it initialized a repo
     //1. cargo run init(Initialize a repo in github)
