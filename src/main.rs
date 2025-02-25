@@ -20,8 +20,8 @@ fn main() {
     //also -p
     } else if args[1] == "cat-file" {
         if args[2] == "-p" {
-            let hash: String=args[3];
-
+            let hash: String = args[3].to_string();
+            dbg!(&hash);
         }
         else {
 
