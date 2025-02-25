@@ -26,3 +26,4 @@ fn main() {
     //IMPORTANT do not initialized inside a git repo this will break the application
 }
 
+//reading a blob object
