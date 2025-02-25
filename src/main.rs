@@ -18,7 +18,11 @@ fn main() {
         println!("Initialized git directory")
     //we need cat-file
     //also -p
-    } else if args[2] == "cat-file" {
+    } else if args[1] == "cat-file" {
+        if args[2] == "-p" {
+            let hash: String = fs::read_to_string(".git/hash").unwrap();
+        }
+
         println!("unknown command: {}", args[1])
     }
     //to see if it initialized a repo
