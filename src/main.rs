@@ -16,8 +16,17 @@ fn main() {
         fs::create_dir(".git/refs").unwrap();
         fs::write(".git/HEAD", "ref: refs/heads/main\n").unwrap();
         println!("Initialized git directory")
-    } else {
-        println!("unknown command: {}", args[1])
+    //we need cat-file
+    //also -p
+    } else if args[1] == "cat-file" {
+        if args[2] == "-p" {
+            let hash: String = args[3].to_string();
+            dbg!(&hash);
+        }
+        else {
+
+            println!("unknown command: {}", args[1])
+        }
     }
     //to see if it initialized a repo
     //1. cargo run init(Initialize a repo in github)
@@ -26,3 +35,4 @@ fn main() {
     //IMPORTANT do not initialized inside a git repo this will break the application
 }
 
+//reading a blob object
