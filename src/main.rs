@@ -3,7 +3,6 @@ use std::env;
 #[allow(unused_imports)]
 use std::fs;
 use std::io::prelude::*;
-use std::io;
 use std::io::BufReader;
 use anyhow::Context;
 use flate2::read::ZlibDecoder;
@@ -24,6 +23,7 @@ fn main() -> anyhow::Result<()> {
         println!("Initialized git directory")
     //we need cat-file
     //also -p
+    //https://www.youtube.com/watch?v=u0VotuGzD_w
     } else if args[1] == "cat-file" {
         if args[2] == "-p" {
             let hash: String = args[3].to_string();
@@ -56,8 +56,16 @@ fn main() -> anyhow::Result<()> {
             //Extracts size
             let size = size.parse::<usize>().context("file header has invalid size: {size}")?;
 
+            //Reads Content
             buf.clear();
-            buf.reserve_exact(size);
+            buf.resize(size, 0);
+            z.read_exact(&mut buf[..]).context("read true  contents did not match expectation")?;
+            let n = z.read(&mut [0]).context("validate EOF in file")?;
+            anyhow::ensure!(n == 0, "git file had {n} trailing bytes");
+
+            let stdout = std::io::stdout();
+            let mut stdout =  stdout.lock();
+            stdout.write_all(&mut buf).context("write object contents to stdout")?;
         }
         else { 
 
