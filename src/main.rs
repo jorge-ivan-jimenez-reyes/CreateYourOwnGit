@@ -83,7 +83,7 @@ fn cat_file_with_git_command(hash: &str) -> anyhow::Result<Vec<u8>> {
 }
 
 fn main() -> anyhow::Result<()> {
-    eprintln!("Logs from your program will appear here!");
+    eprintln!("Ls from your program will appear here!");
     let args: Vec<String> = env::args().collect();
     
     if args.len() < 2 {
