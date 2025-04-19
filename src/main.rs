@@ -16,7 +16,9 @@ fn main() {
     } else if args[1] == "cat-file" {
         if args[2] == "-p" {
             let hash: String = args[3].clone();
-            dbg!(hash);
+            let folder_name = hash[0..2].to_string();
+            let file_name = hash[2..].to_string();
+            dbg!(folder_name, file_name);
         }
     } else {
         println!("Unknown command");
