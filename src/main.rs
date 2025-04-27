@@ -1,190 +1,166 @@
-use std::env;
+use anyhow::Context;
+use clap::{Parser, Subcommand};
+use flate2::read::ZlibDecoder;
+use flate2::write::ZlibEncoder;
+use flate2::Compression;
+use sha1::{Digest, Sha1};
+use std::ffi::CStr;
 use std::fs;
 use std::io::prelude::*;
 use std::io::BufReader;
-use anyhow::Context;
-use flate2::read::ZlibDecoder;
-use std::ffi::CStr;
+use std::path::Path;
 use std::path::PathBuf;
-use std::process::Command;
 
+#[derive(Parser, Debug)]
+#[command(version, about, long_about = None)]
+struct Args {
+    #[command(subcommand)]
+    command: Command,
+}
+
+// Comandos disponibles:
+// - init: inicializar un repositorio
+// - cat-file -p <hash>: mostrar contenido de un objeto
+// - hash-object -w <archivo>: crear un objeto blob a partir de un archivo
+#[derive(Debug, Subcommand)]
+enum Command {
+    Init,
+    CatFile {
+        #[clap(short = 'p')]
+        pretty_print: bool,
+        object_hash: String,
+    },
+    HashObject {
+        #[clap(short = 'w')]
+        write: bool,
+        file: PathBuf,
+    },
+}
 enum Kind {
     Blob,
 }
-
-fn find_git_root() -> Option<PathBuf> {
-    let mut current_dir = env::current_dir().ok()?;
-    
-    loop {
-        // Check if .git exists in the current directory
-        let git_dir = current_dir.join(".git");
-        if git_dir.is_dir() {
-            return Some(git_dir);
-        }
-        
-        // Check if we're already in a .git directory
-        if current_dir.file_name()?.to_str()? == ".git" {
-            return Some(current_dir.clone());
-        }
-        
-        // Check if we're in a subdirectory of .git
-        if let Some(parent) = current_dir.parent() {
-            if parent.file_name()?.to_str()? == ".git" {
-                return Some(parent.to_path_buf());
-            }
-        }
-        
-        // Move up one directory
-        if !current_dir.pop() {
-            // We've reached the root directory and haven't found .git
-            return None;
-        }
-    }
-}
-
-fn list_objects_in_git(git_dir: &PathBuf) -> anyhow::Result<()> {
-    let objects_dir = git_dir.join("objects");
-    
-    // List all subdirectories (first two chars of hash)
-    for entry in fs::read_dir(&objects_dir).context("Failed to read objects directory")? {
-        let entry = entry.context("Failed to read directory entry")?;
-        let path = entry.path();
-        
-        if path.is_dir() {
-            let dir_name = path.file_name().unwrap().to_string_lossy();
-            eprintln!("  Subdirectory: {}", dir_name);
-            
-            // List files in each subdirectory
-            for file in fs::read_dir(&path).context("Failed to read subdirectory")? {
-                let file = file.context("Failed to read file entry")?;
-                let file_name = file.file_name().to_string_lossy().to_string();
-                eprintln!("    Object: {}{}", dir_name, file_name);
-            }
-        }
-    }
-    
-    Ok(())
-}
-
-fn cat_file_with_git_command(hash: &str) -> anyhow::Result<Vec<u8>> {
-    //eprintln!("Trying to use git command to get object content");
-    
-    let output = Command::new("git")
-        .args(&["cat-file", "-p", hash])
-        .output()
-        .context("Failed to execute git command")?;
-    
-    if !output.status.success() {
-        let error = String::from_utf8_lossy(&output.stderr);
-        anyhow::bail!("Git command failed: {}", error);
-    }
-    
-    Ok(output.stdout)
-}
-
 fn main() -> anyhow::Result<()> {
-    eprintln!("Logs from your program will appear here!");
-    let args: Vec<String> = env::args().collect();
-    
-    if args.len() < 2 {
-        println!("Usage: {} <command> [arguments]", args[0]);
-        return Ok(());
-    }
-
-    // Find the .git directory first
-    let git_dir = find_git_root().context("Could not find .git directory")?;
-    //eprintln!("Found .git directory at: {}", git_dir.display());
-    
-    // Making a cli app
-    if args[1] == "init" {
-        // Creating a directory
-        fs::create_dir(".git").unwrap();
-        fs::create_dir(".git/objects").unwrap();
-        fs::create_dir(".git/refs").unwrap();
-        fs::write(".git/HEAD", "ref: refs/heads/main\n").unwrap();
-        println!("Initialized git directory")
-    } else if args[1] == "cat-file" {
-        if args.len() < 4 {
-            println!("Usage: {} cat-file -p <hash>", args[0]);
-            return Ok(());
+    let args = Args::parse();
+    match args.command {
+        // Uso: cargo run -- init
+        // Crea la estructura básica de un repositorio Git
+        Command::Init => {
+            fs::create_dir(".git").unwrap();
+            fs::create_dir(".git/objects").unwrap();
+            fs::create_dir(".git/refs").unwrap();
+            fs::write(".git/HEAD", "ref: refs/heads/main\n").unwrap();
+            println!("Initialized git directory")
         }
-        
-        if args[2] == "-p" {
-            let hash: String = args[3].to_string();
-            
-            // List all objects in the repository to help with debugging
-            //list_objects_in_git(&git_dir)?;
-            
-            // Construct the path to the object file
-            let first_two = &hash[..2];
-            let rest = &hash[2..];
-            let object_path = git_dir.join("objects").join(first_two).join(rest);
-            
-            //eprintln!("Trying to open file at path: {}", object_path.display());
-            
-            // Try to open the loose object file
-            let file_result = std::fs::File::open(&object_path);
-            
-            let content = if let Ok(file) = file_result {
-                //eprintln!("Found loose object file, processing it");
-                // Decode with ZLib
-                let z = ZlibDecoder::new(file);
-                let mut z = BufReader::new(z);
-                let mut buf = Vec::new();
-                
-                // Until 0 or EOF, it will be appended to buff
-                z.read_until(0, &mut buf)
-                    .context("read header from object file")?;
-                
-                let header = CStr::from_bytes_with_nul(&buf)
-                    .expect("know there is exactly 1 nul and it's at the end");
-                
-                let header = header.to_str().context("header is not valid UTF-8")?;
-                
-                let Some((kind_str, size_str)) = header.split_once(' ') else {
-                    anyhow::bail!("Invalid header format, expected 'type size'");
-                };
-                
-                let _kind = match kind_str {
-                    "blob" => Kind::Blob,
-                    _ => anyhow::bail!("No way to print {}", kind_str),
-                };
-                
-                let size: usize = size_str.parse()
-                    .context(format!("file header has invalid size: {}", size_str))?;
-                
-                // Reads Content
-                buf.clear();
-                buf.resize(size, 0);
-                z.read_exact(&mut buf[..])
-                    .context("read true contents did not match expectation")?;
-                
-                let n = z.read(&mut [0]).context("validate EOF in file")?;
-                anyhow::ensure!(n == 0, "git file had {} trailing bytes", n);
-                
-                buf
-            } else {
-                //eprintln!("Object not found as loose object, trying to use git command for packed objects");
-                // If the loose object file doesn't exist, try using the git command
-                // which can handle packed objects
-                cat_file_with_git_command(&hash)?
+        // Uso: cargo run -- cat-file -p <hash>
+        // Muestra el contenido de un objeto blob
+        Command::CatFile {
+            pretty_print,
+            object_hash,
+        } => {
+            anyhow::ensure!(
+                pretty_print,
+                "mode must be given without -p, and we don't support mode"
+            );
+            // Abrimos y descomprimimos el objeto
+            let f = std::fs::File::open(format!(
+                ".git/objects/{}/{}",
+                &object_hash[..2],
+                &object_hash[2..]
+            ))
+            .context("open in .git/objects")?;
+            let z = ZlibDecoder::new(f);
+            let mut z = BufReader::new(z);
+            // Leemos el encabezado del objeto (tipo + tamaño)
+            let mut buf = Vec::new();
+            z.read_until(0, &mut buf)
+                .context("read header from .git/objects")?;
+            let header = CStr::from_bytes_with_nul(&buf)
+                .expect("know there is exactly one nul, and it's at the end");
+            let header = header
+                .to_str()
+                .context(".git/objects file header isn't valid UTF-8")?;
+            let Some((kind, size)) = header.split_once(' ') else {
+                anyhow::bail!(
+                    ".git/objects file header did not start with a known type: '{header}'"
+                );
             };
-            
-            // Write the content to stdout
-            let stdout = std::io::stdout();
-            let mut stdout = stdout.lock();
-            stdout.write_all(&content).context("write object contents to stdout")?;
-            
-        } else {
-            println!("unknown option: {}", args[2]);
+            let kind = match kind {
+                "blob" => Kind::Blob,
+                _ => anyhow::bail!("we do not yet know how to print a '{kind}'"),
+            };
+            let size = size
+            .parse::<u64>()
+                .context(".git/objects file header has invalid size: {size}")?;
+            // NOTA: no va descomprimir is el archivo es muy largo, pero no va tener spam stdout y ser vulnerable a zipbomb
+            let mut z = z.take(size);
+            match kind {
+                Kind::Blob => {
+                    let stdout = std::io::stdout();
+                    let mut stdout = stdout.lock();
+                    let n = std::io::copy(&mut z, &mut stdout)
+                        .context("write .git/objects file to stdout")?;
+                    anyhow::ensure!(n == size, ".git/object file was not the expected size (expected: {size}, actual: {n})");
+                }
+            }
         }
-    } else if args[1] == "list-objects" {
-        // Add a command to just list objects for debugging
-        list_objects_in_git(&git_dir)?;
-        println!("Listed all objects in the repository");
-    } else {
-        println!("unknown command: {}", args[1]);
+        // Uso: cargo run -- hash-object -w <path-al-archivo>
+        // Crea un objeto blob y lo guarda en .git/objects
+        Command::HashObject { write, file } => {
+            fn write_blob<W>(file: &Path, writer: W) -> anyhow::Result<String>
+            where
+                W: Write,
+            {
+                let stat =
+                    std::fs::metadata(&file).with_context(|| format!("stat {}", file.display()))?;
+                // Preparamos compresión y hashing
+                let writer = ZlibEncoder::new(writer, Compression::default());
+                let mut writer = HashWriter {
+                    writer,
+                    hasher: Sha1::new(),
+                };
+                write!(writer, "blob ")?;
+                write!(writer, "{}\0", stat.len())?;
+                let mut file = std::fs::File::open(&file)
+                    .with_context(|| format!("open {}", file.display()))?;
+                std::io::copy(&mut file, &mut writer).context("stream file into blob")?;
+                let _ = writer.writer.finish()?;
+                let hash = writer.hasher.finalize();
+                Ok(hex::encode(hash))
+            }
+            let hash = if write {
+                let tmp = "temporary";
+                let hash = write_blob(
+                    &file,
+                    std::fs::File::create(tmp).context("construct temporary file for blob")?,
+                )
+                .context("write out blob object")?;
+                fs::create_dir_all(format!(".git/objects/{}/", &hash[..2]))
+                    .context("create subdir of .git/objects")?;
+                std::fs::rename(tmp, format!(".git/objects/{}/{}", &hash[..2], &hash[2..]))
+                    .context("move blob file into .git/objects")?;
+                hash
+            } else {
+                write_blob(&file, std::io::sink()).context("write out blob object")?
+            };
+            println!("{hash}");
+        }
     }
-    
     Ok(())
+}
+struct HashWriter<W> {
+    writer: W,
+    hasher: Sha1,
+}
+impl<W> Write for HashWriter<W>
+where
+    W: Write,
+{
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        let n = self.writer.write(buf)?;
+        self.hasher.update(&buf[..n]);
+        Ok(n)
+    }
+    fn flush(&mut self) -> std::io::Result<()> {
+        self.writer.flush()
+    }
 }
