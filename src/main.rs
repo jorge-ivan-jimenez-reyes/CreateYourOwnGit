@@ -42,6 +42,10 @@ enum Command {
         #[clap(short = 'm')]
         message: String,
     },
+    Clone {
+        url: String,
+        target_dir: PathBuf,
+    },
 }
 
 fn main() -> anyhow::Result<()> {
@@ -69,6 +73,8 @@ fn main() -> anyhow::Result<()> {
         Command::WriteTree => commands::write_tree::invoke()?,
         Command::CommitTree { tree_hash, parent, message } => 
             commands::commit_tree::invoke(&tree_hash, parent.as_deref(), &message)?,
+        Command::Clone { url, target_dir } => 
+            commands::clone::invoke(&url, &target_dir)?,
     }
     Ok(())
 }
