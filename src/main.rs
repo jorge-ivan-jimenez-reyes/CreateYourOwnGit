@@ -2,79 +2,79 @@ use clap::{Parser, Subcommand};
 use std::fs;
 use std::path::PathBuf;
 
-pub(crate) mod commands;
-pub(crate) mod objects;
+pub(crate) mod comandos;
+pub(crate) mod objetos;
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
-struct Args {
+struct Argumentos {
     #[command(subcommand)]
-    command: Command,
+    comando: Comando,
 }
 
 #[derive(Debug, Subcommand)]
-enum Command {
-    /// Doc comment
-    Init,
-    CatFile {
+enum Comando {
+    /// Inicializa un repositorio git
+    Iniciar,
+    MostrarArchivo {
         #[clap(short = 'p')]
-        pretty_print: bool,
-        object_hash: String,
+        mostrar_bonito: bool,
+        hash_objeto: String,
     },
-    HashObject {
+    HashObjeto {
         #[clap(short = 'w')]
-        write: bool,
-        file: PathBuf,
+        escribir: bool,
+        archivo: PathBuf,
     },
-    LsTree {
+    ListarArbol {
         #[clap(long)]
-        name_only: bool,
-        tree_hash: String,
+        solo_nombres: bool,
+        hash_arbol: String,
     },
-    ReadTree {
-        tree_hash: String,
+    LeerArbol {
+        hash_arbol: String,
     },
-    WriteTree,
-    CommitTree {
-        tree_hash: String,
+    EscribirArbol,
+    CommitArbol {
+        hash_arbol: String,
         #[clap(short = 'p')]
-        parent: Option<String>,
+        padre: Option<String>,
         #[clap(short = 'm')]
-        message: String,
+        mensaje: String,
     },
-    Clone {
+    Clonar {
         url: String,
-        target_dir: PathBuf,
+        directorio_destino: PathBuf,
     },
 }
 
 fn main() -> anyhow::Result<()> {
     println!("{:?}", std::fs::canonicalize(".git"));
 
-    let args = Args::parse();
-    match args.command {
-        Command::Init => {
+    let argumentos = Argumentos::parse();
+    match argumentos.comando {
+        Comando::Iniciar => {
             fs::create_dir(".git").unwrap();
             fs::create_dir(".git/objects").unwrap();
             fs::create_dir(".git/refs").unwrap();
             fs::write(".git/HEAD", "ref: refs/heads/main\n").unwrap();
-            println!("Initialized git directory")
+            println!("Repositorio Git inicializado")
         }
-        Command::CatFile {
-            pretty_print,
-            object_hash,
-        } => commands::cat_file::invoke(pretty_print, &object_hash)?,
-        Command::HashObject { write, file } => commands::hash_object::invoke(write, &file)?,
-        Command::LsTree {
-            name_only,
-            tree_hash,
-        } => commands::ls_tree::invoke(name_only, &tree_hash)?,
-        Command::ReadTree { tree_hash } => commands::read_tree::invoke(&tree_hash)?,
-        Command::WriteTree => commands::write_tree::invoke()?,
-        Command::CommitTree { tree_hash, parent, message } => 
-            commands::commit_tree::invoke(&tree_hash, parent.as_deref(), &message)?,
-        Command::Clone { url, target_dir } => 
-            commands::clone::invoke(&url, &target_dir)?,
+        Comando::MostrarArchivo {
+            mostrar_bonito,
+            hash_objeto,
+        } => comandos::mostrar_archivo::ejecutar(mostrar_bonito, &hash_objeto)?,
+        Comando::HashObjeto { escribir, archivo } => comandos::hash_objeto::ejecutar(escribir, &archivo)?,
+        Comando::ListarArbol {
+            solo_nombres,
+            hash_arbol,
+        } => comandos::listar_arbol::ejecutar(solo_nombres, &hash_arbol)?,
+        Comando::LeerArbol { hash_arbol } => comandos::leer_arbol::ejecutar(&hash_arbol)?,
+        Comando::EscribirArbol => comandos::escribir_arbol::ejecutar()?,
+        Comando::CommitArbol { hash_arbol, padre, mensaje } => 
+            comandos::commit_arbol::ejecutar(&hash_arbol, padre.as_deref(), &mensaje)?,
+        Comando::Clonar { url, directorio_destino } => 
+            comandos::clonar::ejecutar(&url, &directorio_destino)?,
     }
     Ok(())
 }

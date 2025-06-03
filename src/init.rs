@@ -1,11 +1,11 @@
+use anyhow::Result;
 use std::fs;
-use std::io;
 
-pub fn init() -> io::Result<()> {
+pub fn ejecutar() -> Result<()> {
     fs::create_dir(".git")?;
     fs::create_dir(".git/objects")?;
     fs::create_dir(".git/refs")?;
     fs::write(".git/HEAD", "ref: refs/heads/main\n")?;
-    println!("Initialized git directory");
+    println!("Repositorio Git inicializado");
     Ok(())
 }
