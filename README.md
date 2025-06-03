@@ -130,29 +130,200 @@ cargo run -- clonar https://github.com/usuario/repo.git mi-repo-clonado
 
 ## Ejemplo de Flujo de Trabajo Completo
 
-1. **Iniciar un repositorio:**
-   ```
-   cargo run -- iniciar
-   ```
+A continuación se muestra un flujo de trabajo completo utilizando todos los comandos disponibles:
 
-2. **Crear algunos archivos:**
-   ```
-   echo "Hola mundo" > archivo1.txt
-   echo "Otro archivo" > archivo2.txt
-   mkdir carpeta
-   echo "Contenido en carpeta" > carpeta/archivo3.txt
-   ```
+### 1. Crear un Repositorio Desde Cero
 
-3. **Crear un árbol a partir del directorio de trabajo:**
-   ```
-   cargo run -- escribir-arbol
-   ```
-   Esto devolverá un hash, guárdalo (por ejemplo: `a1b2c3d4e5f6...`)
+```bash
+# Crear directorio para el proyecto
+mkdir mi-proyecto
+cd mi-proyecto
 
-4. **Crear un commit con el árbol:**
-   ```
-   cargo run -- commit-arbol a1b2c3d4e5f6... -m "Mi primer commit"
-   ```
+# Inicializar un repositorio Git
+cargo run -- iniciar
+
+# Verificar que se creó la estructura .git
+ls -la
+```
+
+### 2. Crear y Manipular Archivos
+
+```bash
+# Crear algunos archivos
+echo "# Mi Proyecto" > README.md
+echo "console.log('Hola mundo');" > app.js
+mkdir src
+echo "function saludar() { return 'Hola'; }" > src/funciones.js
+
+# Calcular el hash del README sin guardarlo
+cargo run -- hash-objeto README.md
+# El resultado será algo como: 8e95bfba2d81498f65541e95ecdf8a05f9d6e2b5
+
+# Calcular y guardar el hash del README
+cargo run -- hash-objeto -w README.md
+# Guardar este hash para uso posterior: 8e95bfba2d81498f65541e95ecdf8a05f9d6e2b5
+
+# Calcular y guardar el hash de app.js
+cargo run -- hash-objeto -w app.js
+# Guardar este hash: 7d108c946fe3b3d768fc1b8559cbead2e4998827
+
+# Calcular y guardar el hash de src/funciones.js
+cargo run -- hash-objeto -w src/funciones.js
+# Guardar este hash: 1af17e73721dbe0c40011b82ed4bb1a7dbe3ce29
+```
+
+### 3. Visualizar Contenido de Objetos
+
+```bash
+# Ver el contenido del README usando su hash
+cargo run -- mostrar-archivo -p 8e95bfba2d81498f65541e95ecdf8a05f9d6e2b5
+# Debería mostrar: # Mi Proyecto
+
+# Ver el contenido de app.js usando su hash
+cargo run -- mostrar-archivo -p 7d108c946fe3b3d768fc1b8559cbead2e4998827
+# Debería mostrar: console.log('Hola mundo');
+```
+
+### 4. Crear un Árbol (Snapshot del Directorio)
+
+```bash
+# Crear un árbol a partir del directorio actual
+cargo run -- escribir-arbol
+# Esto devolverá un hash, guárdalo (por ejemplo: c68d233a33c5930ef3a38968a47477fd53ff8f42)
+
+# Listar el contenido del árbol
+cargo run -- listar-arbol c68d233a33c5930ef3a38968a47477fd53ff8f42
+# Mostrará algo como:
+# 100644 blob 7d108c946fe3b3d768fc1b8559cbead2e4998827    app.js
+# 100644 blob 8e95bfba2d81498f65541e95ecdf8a05f9d6e2b5    README.md
+# 040000 tree f68b86fb5c797961937d71e25c697bc863988e7d    src
+
+# Listar solo los nombres del árbol
+cargo run -- listar-arbol --name-only c68d233a33c5930ef3a38968a47477fd53ff8f42
+# Mostrará:
+# app.js
+# README.md
+# src
+
+# Opcionalmente, podemos listar el contenido del directorio src
+cargo run -- listar-arbol f68b86fb5c797961937d71e25c697bc863988e7d
+# Mostrará:
+# 100644 blob 1af17e73721dbe0c40011b82ed4bb1a7dbe3ce29    funciones.js
+```
+
+### 5. Crear un Commit
+
+```bash
+# Crear un commit con el árbol que creamos
+cargo run -- commit-arbol c68d233a33c5930ef3a38968a47477fd53ff8f42 -m "Commit inicial"
+# Esto devolverá un hash de commit, guárdalo (por ejemplo: a7d9a15f9e1655cd7e47e51d3b25307e11775b49)
+```
+
+### 6. Hacer Cambios y Crear un Segundo Commit
+
+```bash
+# Modificar un archivo
+echo "console.log('Hola mundo actualizado');" > app.js
+
+# Calcular y guardar el hash del archivo modificado
+cargo run -- hash-objeto -w app.js
+# Guardar este nuevo hash: 9c5b3ce3e9eeb7ef7da7b620bb36c6794da69a3b
+
+# Crear un nuevo árbol
+cargo run -- escribir-arbol
+# Guardar este nuevo hash de árbol: f7b877f1151eb2815da8c75b79b07a782a8d5cc5
+
+# Crear un segundo commit referenciando el primero como padre
+cargo run -- commit-arbol f7b877f1151eb2815da8c75b79b07a782a8d5cc5 -p a7d9a15f9e1655cd7e47e51d3b25307e11775b49 -m "Actualización de app.js"
+# Esto devolverá un nuevo hash de commit: b2e5c96a7e2135dc3893bba7b8103683cfc8a32b
+```
+
+### 7. Experimentar con Árboles y Directorios
+
+```bash
+# Vamos a crear un directorio temporal para experimentar
+mkdir ../temp-test
+cd ../temp-test
+
+# Extraer el árbol del primer commit al directorio actual
+cargo run -- leer-arbol c68d233a33c5930ef3a38968a47477fd53ff8f42
+
+# Verificar que se extrajeron los archivos correctamente
+ls -la
+cat README.md
+cat app.js
+cat src/funciones.js
+```
+
+### 8. Clonar un Repositorio Remoto
+
+```bash
+# Volver al directorio principal
+cd ..
+
+# Clonar un repositorio remoto
+cargo run -- clonar https://github.com/rust-lang/rust-by-example.git rust-example
+
+# Explorar el repositorio clonado
+cd rust-example
+ls -la
+```
+
+### 9. Trabajar con el Repositorio Clonado
+
+```bash
+# Crear un nuevo archivo en el repo clonado
+echo "// Mis notas sobre Rust" > mis-notas.rs
+
+# Calcular y guardar el hash del nuevo archivo
+cargo run -- hash-objeto -w mis-notas.rs
+# Guardar este hash: 3a8f2af030b7e218f2e5c7e19d0f68616736a5b3
+
+# Crear un nuevo árbol con nuestros cambios
+cargo run -- escribir-arbol
+# Guardar este hash: d42fb816e2e9734ec93ed931f4eaa4c193147f38
+
+# Obtener el hash del commit HEAD actual
+cat .git/refs/heads/main
+# Por ejemplo: 6c2dc2a236457d439eb51ac3cc4743bca190887e
+
+# Crear un nuevo commit con nuestros cambios
+cargo run -- commit-arbol d42fb816e2e9734ec93ed931f4eaa4c193147f38 -p 6c2dc2a236457d439eb51ac3cc4743bca190887e -m "Agregué mis notas personales"
+# Esto creará un nuevo commit: 1e9f8aec3df5b8ac9016842863612a0ff3230fff
+```
+
+### 10. Explorar un Commit en Detalle
+
+```bash
+# Obtener el árbol del commit
+# Primero necesitamos leer el objeto commit para extraer el hash del árbol
+# (Esta funcionalidad no está implementada directamente, pero podríamos verlo con cat-file)
+# Usaremos el árbol que conocemos: d42fb816e2e9734ec93ed931f4eaa4c193147f38
+
+# Listar el contenido del árbol del commit
+cargo run -- listar-arbol d42fb816e2e9734ec93ed931f4eaa4c193147f38
+
+# Ver el contenido de nuestro archivo
+cargo run -- mostrar-archivo -p 3a8f2af030b7e218f2e5c7e19d0f68616736a5b3
+# Debería mostrar: // Mis notas sobre Rust
+```
+
+### 11. Resumen del Flujo de Trabajo
+
+Este flujo de trabajo muestra cómo:
+
+1. Inicializar un repositorio Git desde cero
+2. Calcular hashes de archivos y almacenarlos como objetos blob
+3. Visualizar el contenido de objetos almacenados
+4. Crear árboles (snapshots del directorio)
+5. Crear commits vinculados a árboles
+6. Crear una secuencia de commits conectados (historia)
+7. Extraer el contenido de un árbol a un directorio
+8. Clonar un repositorio remoto
+9. Hacer cambios y crear commits en un repositorio existente
+10. Examinar la estructura interna de Git
+
+Este flujo cubre todos los comandos disponibles en nuestra implementación y demuestra cómo funcionan juntos para crear un sistema de control de versiones.
 
 ## Arquitectura Interna
 
