@@ -12,7 +12,7 @@ pub fn ejecutar(hash_arbol: &str) -> Result<()> {
     let mut lector = BufReader::new(decodificador);
     
     // Leer y descartar el encabezado (tree <size>\0)
-    let mut cabecera = Vec::new();
+    let mut cabecera: Vec<u8> = Vec::new();
     while let Ok(byte) = lector.by_ref().bytes().next().transpose() {
         if let Some(byte) = byte {
             cabecera.push(byte);
@@ -91,7 +91,7 @@ fn extraer_arbol(lector: &mut impl Read, base_path: &Path) -> Result<()> {
             let mut lector_sub = BufReader::new(decodificador);
             
             // Leer y descartar el encabezado
-            let mut cabecera = Vec::new();
+            let mut cabecera: Vec<u8> = Vec::new();
             while let Ok(byte) = lector_sub.by_ref().bytes().next().transpose() {
                 if let Some(byte) = byte {
                     if byte == 0 {
@@ -119,7 +119,7 @@ fn extraer_blob(hash: &str, ruta: &Path) -> Result<()> {
     let mut lector = BufReader::new(decodificador);
     
     // Leer y descartar el encabezado
-    let mut cabecera = Vec::new();
+    let mut cabecera: Vec<u8> = Vec::new();
     while let Ok(byte) = lector.by_ref().bytes().next().transpose() {
         if let Some(byte) = byte {
             if byte == 0 {

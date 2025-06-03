@@ -5,6 +5,7 @@ use sha1::{Digest, Sha1};
 use std::fs::{self, File};
 use std::io::Write;
 use std::path::{Path, PathBuf};
+use std::os::unix::fs::PermissionsExt;
 
 pub fn ejecutar() -> Result<()> {
     let hash = escribir_arbol_directorio(".")?;

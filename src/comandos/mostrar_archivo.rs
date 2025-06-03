@@ -1,6 +1,6 @@
 use crate::objetos::{Objeto, Tipo};
 use anyhow::Result;
-use std::io::Read;
+use std::io::{Read, Write};
 
 pub fn ejecutar(mostrar_bonito: bool, hash_objeto: &str) -> Result<()> {
     if !mostrar_bonito {
