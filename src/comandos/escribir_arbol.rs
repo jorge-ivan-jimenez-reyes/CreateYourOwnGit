@@ -1,3 +1,4 @@
+use std::os::unix::fs::PermissionsExt;
 use anyhow::Result;
 use flate2::write::ZlibEncoder;
 use flate2::Compression;
@@ -5,7 +6,6 @@ use sha1::{Digest, Sha1};
 use std::fs::{self, File};
 use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::os::unix::fs::PermissionsExt;
 
 pub fn ejecutar() -> Result<()> {
     let hash = escribir_arbol_directorio(".")?;
@@ -20,38 +20,35 @@ fn escribir_arbol_directorio(ruta: &str) -> Result<String> {
     let ruta_path = Path::new(ruta);
     for entrada in fs::read_dir(ruta_path)? {
         let entrada = entrada?;
+        let ruta_absoluta = entrada.path();
         let nombre = entrada.file_name();
         let nombre_str = nombre.to_string_lossy();
-        
-        // Ignorar archivos y directorios ocultos y el directorio .git
-        if nombre_str.starts_with('.') {
+
+        // Evita procesar cualquier cosa dentro de .git/
+        if ruta_absoluta.starts_with(".git") || ruta_absoluta.starts_with("target") {
             continue;
         }
-        
+
+
         let tipo = entrada.file_type()?;
         let ruta_relativa = if ruta == "." {
             PathBuf::from(nombre.clone())
         } else {
             PathBuf::from(ruta).join(nombre.clone())
         };
-        
+
         if tipo.is_dir() {
-            // Es un directorio, procesar recursivamente
             let hash = escribir_arbol_directorio(&ruta_relativa.to_string_lossy())?;
             entradas.push((nombre_str.to_string(), "40000".to_string(), hash));
         } else if tipo.is_file() {
-            // Es un archivo, calcular su hash
             let hash = hash_objeto(&ruta_relativa)?;
-            
-            // Determinar los permisos
             let metadata = fs::metadata(&ruta_relativa)?;
             let es_ejecutable = metadata.permissions().mode() & 0o111 != 0;
             let modo = if es_ejecutable { "100755" } else { "100644" };
-            
             entradas.push((nombre_str.to_string(), modo.to_string(), hash));
         }
-        // Ignorar symlinks por simplicidad
     }
+
     
     // Ordenar las entradas por nombre
     entradas.sort_by(|a, b| a.0.cmp(&b.0));
@@ -129,4 +126,4 @@ fn hash_objeto(ruta: &Path) -> Result<String> {
     }
     
     Ok(hash_str)
-} 
+}

@@ -49,7 +49,7 @@ enum Comando {
 }
 
 fn main() -> anyhow::Result<()> {
-    println!("{:?}", std::fs::canonicalize(".git"));
+    //println!("{:?}", std::fs::canonicalize(".git"));
 
     let argumentos = Argumentos::parse();
     match argumentos.comando {
